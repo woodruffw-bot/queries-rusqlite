@@ -190,6 +190,7 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
         #(#conditions)*
         impl<'conn> #name<&'conn ::rusqlite::Connection> {
             /// Borrow a connection for queries.
+            #[inline]
             pub fn from_conn(connection: &'conn ::rusqlite::Connection) -> Self {
                 Self { connection }
             }
@@ -198,6 +199,7 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
         #(#conditions)*
         impl<'conn> #name<&'conn mut ::rusqlite::Connection> {
             /// Borrow a connection for queries and transactions.
+            #[inline]
             pub fn from_conn_mut(connection: &'conn mut ::rusqlite::Connection) -> Self {
                 Self { connection }
             }
@@ -205,6 +207,7 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
             /// Begin a transaction using the connection's configured behavior.
             ///
             /// Return an error if SQLite cannot start the transaction.
+            #[inline]
             pub fn begin(&mut self) -> ::rusqlite::Result<#name<::rusqlite::Transaction<'_>>> {
                 self.connection.transaction().map(#name::from_tx)
             }
@@ -213,6 +216,7 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
         #(#conditions)*
         impl #name<::rusqlite::Connection> {
             /// Take ownership of a connection.
+            #[inline]
             pub fn from_connection(connection: ::rusqlite::Connection) -> Self {
                 Self { connection }
             }
@@ -220,6 +224,7 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
             /// Begin a transaction using the connection's configured behavior.
             ///
             /// Return an error if SQLite cannot start the transaction.
+            #[inline]
             pub fn begin(&mut self) -> ::rusqlite::Result<#name<::rusqlite::Transaction<'_>>> {
                 self.connection.transaction().map(#name::from_tx)
             }
@@ -228,6 +233,7 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
         #(#conditions)*
         impl<'conn> #name<::rusqlite::Transaction<'conn>> {
             /// Take ownership of a transaction, preserving its drop behavior.
+            #[inline]
             pub fn from_tx(connection: ::rusqlite::Transaction<'conn>) -> Self {
                 Self { connection }
             }
@@ -235,6 +241,7 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
             /// Consume the wrapper and commit the transaction.
             ///
             /// Return any error from `rusqlite::Transaction::commit`.
+            #[inline]
             pub fn commit(self) -> ::rusqlite::Result<()> {
                 self.connection.commit()
             }
@@ -242,6 +249,7 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
             /// Consume the wrapper and roll back the transaction.
             ///
             /// Return any error from `rusqlite::Transaction::rollback`.
+            #[inline]
             pub fn rollback(self) -> ::rusqlite::Result<()> {
                 self.connection.rollback()
             }
@@ -347,6 +355,7 @@ fn expand_method(method: &TraitItemFn, path: &Path) -> syn::Result<Tokens> {
     let inputs = &signature.inputs;
     Ok(quote! {
         #(#attributes)*
+        #[inline]
         pub fn #name(&self, #inputs) -> ::rusqlite::Result<#output> {
             use #path::__private::SingleRowFallback as _;
             <#output as #path::__private::FromRows<'_, {
@@ -452,6 +461,7 @@ fn expand_from_row(input: Tokens) -> syn::Result<Tokens> {
     Ok(quote! {
         #[automatically_derived]
         impl #impl_generics #path::FromRow for #name #type_generics #where_clause {
+            #[inline]
             fn from_row(row: &::rusqlite::Row<'_>) -> ::rusqlite::Result<Self> {
                 ::core::result::Result::Ok(#initializer)
             }

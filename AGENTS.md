@@ -6,6 +6,9 @@ of unsafe Rust.
 Bind parameters through rusqlite. Do not interpolate values into SQL or add a
 SQL parser. Follow rusqlite's connection and transaction semantics.
 
+Keep generated queries and row decoding zero-cost relative to equivalent
+handwritten rusqlite. Use static dispatch and avoid extra allocation.
+
 Test success and failure paths. Preserve 100% line, function, and region
 coverage in both crates without excluding production code.
 

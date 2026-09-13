@@ -62,6 +62,7 @@ pub trait FromRow: Sized {
 macro_rules! tuple_from_row {
     ($($name:ident:$index:tt),+) => {
         impl<$($name: rusqlite::types::FromSql),+> FromRow for ($($name,)+) {
+            #[inline]
             fn from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
                 Ok(($(row.get::<_, $name>($index)?,)+))
             }
@@ -159,6 +160,7 @@ impl<T: FromRow> Query<'_, T> {
     /// Execution starts when the iterator advances. Each item is a decoded row
     /// or an execution or decoding error. Dropping the iterator resets the
     /// statement without undoing writes.
+    #[inline]
     pub fn iter(&mut self) -> impl Iterator<Item = rusqlite::Result<T>> + '_ {
         self.statement.raw_query().mapped(T::from_row)
     }
@@ -183,24 +185,28 @@ pub mod __private {
     }
 
     impl ConnectionSource for Connection {
+        #[inline]
         fn connection(&self) -> &Connection {
             self
         }
     }
 
     impl ConnectionSource for &Connection {
+        #[inline]
         fn connection(&self) -> &Connection {
             self
         }
     }
 
     impl ConnectionSource for &mut Connection {
+        #[inline]
         fn connection(&self) -> &Connection {
             self
         }
     }
 
     impl ConnectionSource for Transaction<'_> {
+        #[inline]
         fn connection(&self) -> &Connection {
             self
         }
@@ -245,6 +251,7 @@ pub mod __private {
     }
 
     impl<T: FromRow> FromRows<'_, ONE_ROW> for T {
+        #[inline]
         fn from_rows(
             connection: &Connection,
             sql: &str,
@@ -255,6 +262,7 @@ pub mod __private {
     }
 
     impl<T: FromRow> FromRows<'_, OPTIONAL_ROW> for Option<T> {
+        #[inline]
         fn from_rows(
             connection: &Connection,
             sql: &str,
@@ -271,6 +279,7 @@ pub mod __private {
     }
 
     impl<T: FromRow> FromRows<'_, ALL_ROWS> for Vec<T> {
+        #[inline]
         fn from_rows(
             connection: &Connection,
             sql: &str,
@@ -284,6 +293,7 @@ pub mod __private {
     }
 
     impl<'conn, T: FromRow> FromRows<'conn, LAZY_ROWS> for Query<'conn, T> {
+        #[inline]
         fn from_rows(
             connection: &'conn Connection,
             sql: &str,
@@ -308,6 +318,7 @@ pub mod __private {
     }
 
     impl FromRows<'_, EXECUTE> for () {
+        #[inline]
         fn from_rows(
             connection: &Connection,
             sql: &str,
