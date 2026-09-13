@@ -42,6 +42,7 @@
 //! using rusqlite connections instead of asynchronous connection pools.
 
 #![forbid(unsafe_code)]
+#![deny(missing_docs)]
 
 use std::marker::PhantomData;
 
@@ -88,7 +89,7 @@ tuple_from_row!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:
 tuple_from_row!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14);
 tuple_from_row!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:12, N:13, O:14, P:15);
 
-/// A prepared query with bound parameters that can be iterated lazily.
+/// A prepared query that decodes rows during iteration.
 ///
 /// Declare a query method returning `Query<'_, T>` to obtain this handle. The
 /// method prepares SQL and binds its arguments, but does not execute the query.
@@ -156,7 +157,11 @@ pub struct Query<'conn, T> {
 }
 
 impl<T: FromRow> Query<'_, T> {
-    /// Execute the query and decode rows one at a time.
+    /// Iterate from the beginning using the bound parameters.
+    ///
+    /// Execution starts when the iterator advances. Each item is a decoded row
+    /// or an execution or decoding error. Dropping the iterator resets the
+    /// statement without undoing writes.
     pub fn iter(&mut self) -> impl Iterator<Item = rusqlite::Result<T>> + '_ {
         self.statement.raw_query().mapped(T::from_row)
     }
@@ -168,7 +173,9 @@ pub mod __private {
     use super::{FromRow, PhantomData, Query};
     use rusqlite::{Connection, OptionalExtension, ToSql, Transaction};
 
+    /// Access the connection held by a generated wrapper.
     pub trait ConnectionSource {
+        /// Borrow the underlying connection.
         fn connection(&self) -> &Connection;
     }
 
@@ -198,26 +205,35 @@ pub mod __private {
 
     // Inherent constants take precedence over the trait's fallback. Resolving
     // this in Rust (rather than matching type names in the macro) permits aliases.
+    /// Select single-row decoding when no specialized category applies.
     pub trait Probe {
+        /// The single-row category.
         const VALUE: u8 = 0;
     }
 
+    /// Select result decoding by type, including type aliases.
     pub struct FromRowsCategory<T>(PhantomData<T>);
     impl<T> Probe for FromRowsCategory<T> {}
     impl<T> FromRowsCategory<Option<T>> {
+        /// Zero or one row.
         pub const VALUE: u8 = 1;
     }
     impl<T> FromRowsCategory<Vec<T>> {
+        /// All rows.
         pub const VALUE: u8 = 2;
     }
     impl<T> FromRowsCategory<Query<'_, T>> {
+        /// Lazy iteration.
         pub const VALUE: u8 = 3;
     }
     impl FromRowsCategory<()> {
+        /// Execution without result rows.
         pub const VALUE: u8 = 4;
     }
 
+    /// Execute SQL and decode its result using the selected category.
     pub trait FromRows<'conn, const CATEGORY: u8>: Sized {
+        /// Prepare SQL, bind parameters, and produce the declared result.
         fn from_rows(
             connection: &'conn Connection,
             sql: &str,

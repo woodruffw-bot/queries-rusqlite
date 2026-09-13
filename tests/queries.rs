@@ -304,9 +304,11 @@ fn errors_keep_their_original_meaning() -> Result<()> {
     Ok(())
 }
 
-mod visible {
+/// Public declarations checked by the workspace documentation lint.
+pub mod visible {
     use queries_rusqlite as renamed;
 
+    /// Shadow the prelude variant to check generated path resolution.
     pub struct Ok;
 
     /// Public declarations keep their methods accessible to callers.
@@ -317,9 +319,11 @@ mod visible {
         fn value() -> Value;
     }
 
+    /// A decoded integer.
     #[derive(Debug, PartialEq, renamed::FromRow)]
     #[from_row(crate = renamed)]
     pub struct Value {
+        /// The selected value.
         pub value: i64,
     }
 }

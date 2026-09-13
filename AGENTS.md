@@ -1,7 +1,8 @@
 # Working on queries-rusqlite
 
 Keep the crate small. Add dependencies only when the implementation requires
-them. Use safe Rust, and preserve `forbid(unsafe_code)` in both crates.
+them. Preserve `forbid(unsafe_code)` and `deny(missing_docs)` in both crates.
+Document public APIs in terse, simple technical English.
 
 Bind SQL parameters through rusqlite. Do not interpolate values into SQL or add
 a SQL parser. Follow rusqlite's connection and transaction semantics.

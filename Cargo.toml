@@ -15,6 +15,9 @@ resolver = "3"
 queries-rusqlite-macros = { version = "=0.1.0", path = "queries-rusqlite-macros" }
 rusqlite = { version = "0.40.2", default-features = false }
 
-[lints.rust]
+[lints]
+workspace = true
+
+[workspace.lints.rust]
 unsafe_code = "forbid"
 missing_docs = "deny"

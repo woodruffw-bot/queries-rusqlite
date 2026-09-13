@@ -11,15 +11,58 @@ use syn::{
     TraitItem, TraitItemFn, Type, parse::Parser, parse_quote, punctuated::Punctuated,
 };
 
-/// Turn a trait containing `#[query = "SQL"]` declarations into a query wrapper.
+/// Replace a trait with a struct of synchronous query methods.
 ///
-/// Methods are synchronous, have no receiver, and return a row, `Option<Row>`,
-/// `Vec<Row>`, `Query<'_, Row>`, or `()`. Generated methods return a
-/// `rusqlite::Result`. Construct the wrapper with `from_conn`, `from_conn_mut`,
-/// `from_connection`, or `from_tx`.
+/// The struct keeps the trait's name, visibility, and documentation. Each method
+/// takes `&self` and returns `rusqlite::Result<T>`, where `T` is its declared
+/// return type. Method documentation is preserved.
 ///
-/// The optional `crate = path` argument selects a renamed `queries-rusqlite` crate.
-/// Callers must also declare a dependency named `rusqlite`.
+/// # Declarations
+///
+/// Each method needs `#[query = SQL]`, where `SQL` is an expression yielding
+/// `&str`, such as a string literal or `include_str!("query.sql")`. Arguments
+/// must implement `rusqlite::ToSql`. They bind in declaration order to `?1`,
+/// `?2`, and so on. SQL and column types are checked at runtime.
+///
+/// Traits cannot be unsafe, auto, generic, or have bounds. They may contain only
+/// methods without receivers, bodies, generics, or qualifiers such as `async`.
+/// Arguments must have simple names. The generated method names listed below
+/// are reserved. Only `doc`, `cfg`, and `cfg_attr` attributes are preserved.
+///
+/// # Results
+///
+/// | Declared type | Result |
+/// | --- | --- |
+/// | `T: FromRow` | Exactly one row; zero or multiple rows are errors. |
+/// | `Option<T>` | Zero or one row; multiple rows are an error. |
+/// | `Vec<T>` | All rows, stopping at the first error. |
+/// | `Query<'_, T>` | A prepared query for lazy iteration. |
+/// | `()` or omitted | Execute without result rows; discard the affected row count. |
+///
+/// Row types implement `queries_rusqlite::FromRow`. Use `(T,)` for a single
+/// column. Return type aliases are supported. Preparation, binding, execution,
+/// and decoding errors propagate from rusqlite; lazy queries return execution
+/// and decoding errors as iterator items.
+///
+/// # Connections and transactions
+///
+/// - `from_conn(&connection)` borrows a connection for queries.
+/// - `from_conn_mut(&mut connection)` borrows a connection and supports `begin()`.
+/// - `from_connection(connection)` owns a connection and supports `begin()`.
+/// - `from_tx(transaction)` owns a transaction and supports `commit()` and `rollback()`.
+///
+/// `begin()` borrows the wrapper mutably and returns a transaction wrapper with
+/// the same query methods. `commit()` and `rollback()` consume that wrapper.
+/// Dropping it follows the transaction's drop behavior, which defaults to rollback.
+/// To configure a transaction, create it with rusqlite and pass it to `from_tx`.
+///
+/// # Crate names
+///
+/// Use `#[queries(crate = path)]` if `queries-rusqlite` is renamed. Callers must
+/// also declare a dependency named `rusqlite`.
+///
+/// # Invalid declarations
+///
 /// Every method must declare its SQL:
 ///
 /// ```compile_fail
@@ -43,9 +86,14 @@ pub fn queries(attributes: TokenStream, input: TokenStream) -> TokenStream {
     finish(expand_queries(attributes.into(), input.into())).into()
 }
 
-/// Read named fields by column name and tuple fields by column position.
+/// Derive `queries_rusqlite::FromRow` for a named or tuple struct.
 ///
-/// Use `#[column = "name"]` to override a field's column and
+/// Named fields use column names; tuple fields use zero-based column positions.
+/// Each field must implement `rusqlite::types::FromSql`. Generic structs are
+/// supported; the derive adds this bound for each field type. Missing columns
+/// and conversion errors propagate from `rusqlite::Row::get`.
+///
+/// Use `#[column = "name"]` to read a field by that column name and
 /// `#[from_row(crate = path)]` to select a renamed `queries-rusqlite` crate.
 /// Callers must also declare a dependency named `rusqlite`.
 /// Unit structs, enums, and unions are not supported:
@@ -146,7 +194,9 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
                 Self { connection }
             }
 
-            /// Begin a transaction on the borrowed connection.
+            /// Begin a transaction using the connection's configured behavior.
+            ///
+            /// Return an error if SQLite cannot start the transaction.
             pub fn begin(&mut self) -> ::rusqlite::Result<#name<::rusqlite::Transaction<'_>>> {
                 self.connection.transaction().map(#name::from_tx)
             }
@@ -159,7 +209,9 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
                 Self { connection }
             }
 
-            /// Begin a transaction on the owned connection.
+            /// Begin a transaction using the connection's configured behavior.
+            ///
+            /// Return an error if SQLite cannot start the transaction.
             pub fn begin(&mut self) -> ::rusqlite::Result<#name<::rusqlite::Transaction<'_>>> {
                 self.connection.transaction().map(#name::from_tx)
             }
@@ -167,17 +219,21 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
 
         #(#conditions)*
         impl<'conn> #name<::rusqlite::Transaction<'conn>> {
-            /// Take ownership of a transaction.
+            /// Take ownership of a transaction, preserving its drop behavior.
             pub fn from_tx(connection: ::rusqlite::Transaction<'conn>) -> Self {
                 Self { connection }
             }
 
-            /// Commit the transaction.
+            /// Consume the wrapper and commit the transaction.
+            ///
+            /// Return any error from `rusqlite::Transaction::commit`.
             pub fn commit(self) -> ::rusqlite::Result<()> {
                 self.connection.commit()
             }
 
-            /// Roll back the transaction.
+            /// Consume the wrapper and roll back the transaction.
+            ///
+            /// Return any error from `rusqlite::Transaction::rollback`.
             pub fn rollback(self) -> ::rusqlite::Result<()> {
                 self.connection.rollback()
             }
