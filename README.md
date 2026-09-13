@@ -3,8 +3,7 @@
 [`queries`](https://docs.rs/queries/0.2.0/queries/)-style query declarations for
 [`rusqlite`](https://docs.rs/rusqlite/), with synchronous methods.
 
-Requires Rust 1.95.0 or later. Use a system SQLite installation or enable
-rusqlite's `bundled` feature to build SQLite from source.
+Requires Rust 1.95.0 or later.
 
 Install from Git:
 
@@ -13,9 +12,6 @@ Install from Git:
 queries-rusqlite = { git = "https://github.com/woodruffw-bot/queries-rusqlite" }
 rusqlite = { version = "0.40.2", default-features = false }
 ```
-
-Declare `rusqlite` as a direct dependency under that name; generated code
-references it directly.
 
 ## Queries
 
