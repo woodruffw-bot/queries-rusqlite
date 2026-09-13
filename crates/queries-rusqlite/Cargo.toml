@@ -1,0 +1,16 @@
+[package]
+name = "queries-rusqlite"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "Declare SQLite queries as Rust methods"
+repository = "https://github.com/woodruffw-bot/queries-rusqlite"
+license = "BSD-3-Clause"
+readme = "../../README.md"
+
+[dependencies]
+queries-rusqlite-macros = { version = "=0.1.0", path = "../queries-rusqlite-macros" }
+rusqlite = { version = "0.40.2", default-features = false }
+
+[lints]
+workspace = true

@@ -5,6 +5,9 @@ them. Keep `unsafe_code = "forbid"` and `missing_docs = "deny"` in the workspace
 Cargo.toml, inherited by both crates. Do not duplicate them as crate attributes.
 Document public APIs in terse, simple technical English.
 
+Keep both crates under `crates/`. The root Cargo.toml defines the workspace;
+run workspace checks from the repository root.
+
 Bind SQL parameters through rusqlite. Do not interpolate values into SQL or add
 a SQL parser. Follow rusqlite's connection and transaction semantics.
 
