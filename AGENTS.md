@@ -1,7 +1,8 @@
 # Working on queries-rusqlite
 
 Keep the crate small. Add dependencies only when the implementation requires
-them. Preserve `forbid(unsafe_code)` and `deny(missing_docs)` in both crates.
+them. Keep `unsafe_code = "forbid"` and `missing_docs = "deny"` in the workspace
+Cargo.toml, inherited by both crates. Do not duplicate them as crate attributes.
 Document public APIs in terse, simple technical English.
 
 Bind SQL parameters through rusqlite. Do not interpolate values into SQL or add

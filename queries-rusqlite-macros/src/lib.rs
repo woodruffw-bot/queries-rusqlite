@@ -1,8 +1,5 @@
 //! Implementation of the macros re-exported by `queries-rusqlite`.
 
-#![forbid(unsafe_code)]
-#![deny(missing_docs)]
-
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as Tokens;
 use quote::quote;

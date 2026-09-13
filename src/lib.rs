@@ -41,9 +41,6 @@
 //! This crate follows the API of [queries](https://docs.rs/queries/0.2.0/queries/),
 //! using rusqlite connections instead of asynchronous connection pools.
 
-#![forbid(unsafe_code)]
-#![deny(missing_docs)]
-
 use std::marker::PhantomData;
 
 pub use queries_rusqlite_macros::{FromRow, queries};
