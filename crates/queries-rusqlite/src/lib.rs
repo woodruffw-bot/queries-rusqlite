@@ -170,6 +170,12 @@ pub mod __private {
     use super::{FromRow, PhantomData, Query};
     use rusqlite::{Connection, OptionalExtension, ToSql, Transaction};
 
+    const ONE_ROW: u8 = 0;
+    const OPTIONAL_ROW: u8 = 1;
+    const ALL_ROWS: u8 = 2;
+    const LAZY_ROWS: u8 = 3;
+    const EXECUTE: u8 = 4;
+
     /// Access the connection held by a generated wrapper.
     pub trait ConnectionSource {
         /// Borrow the underlying connection.
@@ -203,29 +209,29 @@ pub mod __private {
     // Inherent constants take precedence over the trait's fallback. Resolving
     // this in Rust (rather than matching type names in the macro) permits aliases.
     /// Select single-row decoding when no specialized category applies.
-    pub trait Probe {
+    pub trait SingleRowFallback {
         /// The single-row category.
-        const VALUE: u8 = 0;
+        const VALUE: u8 = ONE_ROW;
     }
 
     /// Select result decoding by type, including type aliases.
     pub struct FromRowsCategory<T>(PhantomData<T>);
-    impl<T> Probe for FromRowsCategory<T> {}
+    impl<T> SingleRowFallback for FromRowsCategory<T> {}
     impl<T> FromRowsCategory<Option<T>> {
         /// Zero or one row.
-        pub const VALUE: u8 = 1;
+        pub const VALUE: u8 = OPTIONAL_ROW;
     }
     impl<T> FromRowsCategory<Vec<T>> {
         /// All rows.
-        pub const VALUE: u8 = 2;
+        pub const VALUE: u8 = ALL_ROWS;
     }
     impl<T> FromRowsCategory<Query<'_, T>> {
         /// Lazy iteration.
-        pub const VALUE: u8 = 3;
+        pub const VALUE: u8 = LAZY_ROWS;
     }
     impl FromRowsCategory<()> {
         /// Execution without result rows.
-        pub const VALUE: u8 = 4;
+        pub const VALUE: u8 = EXECUTE;
     }
 
     /// Execute SQL and decode its result using the selected category.
@@ -238,7 +244,7 @@ pub mod __private {
         ) -> rusqlite::Result<Self>;
     }
 
-    impl<T: FromRow> FromRows<'_, 0> for T {
+    impl<T: FromRow> FromRows<'_, ONE_ROW> for T {
         fn from_rows(
             connection: &Connection,
             sql: &str,
@@ -248,7 +254,7 @@ pub mod __private {
         }
     }
 
-    impl<T: FromRow> FromRows<'_, 1> for Option<T> {
+    impl<T: FromRow> FromRows<'_, OPTIONAL_ROW> for Option<T> {
         fn from_rows(
             connection: &Connection,
             sql: &str,
@@ -264,7 +270,7 @@ pub mod __private {
         }
     }
 
-    impl<T: FromRow> FromRows<'_, 2> for Vec<T> {
+    impl<T: FromRow> FromRows<'_, ALL_ROWS> for Vec<T> {
         fn from_rows(
             connection: &Connection,
             sql: &str,
@@ -277,16 +283,23 @@ pub mod __private {
         }
     }
 
-    impl<'conn, T: FromRow> FromRows<'conn, 3> for Query<'conn, T> {
+    impl<'conn, T: FromRow> FromRows<'conn, LAZY_ROWS> for Query<'conn, T> {
         fn from_rows(
             connection: &'conn Connection,
             sql: &str,
             params: &[&dyn ToSql],
         ) -> rusqlite::Result<Self> {
             let mut statement = connection.prepare(sql)?;
-            // Query binds parameters without stepping. Dropping Rows resets the
-            // statement but retains its bindings for later raw_query calls.
-            drop(statement.query(params)?);
+            let expected = statement.parameter_count();
+            if params.len() != expected {
+                return Err(rusqlite::Error::InvalidParameterCount(
+                    params.len(),
+                    expected,
+                ));
+            }
+            for (index, &parameter) in params.iter().enumerate() {
+                statement.raw_bind_parameter(index + 1, parameter)?;
+            }
             Ok(Self {
                 statement,
                 row_type: PhantomData,
@@ -294,7 +307,7 @@ pub mod __private {
         }
     }
 
-    impl FromRows<'_, 4> for () {
+    impl FromRows<'_, EXECUTE> for () {
         fn from_rows(
             connection: &Connection,
             sql: &str,

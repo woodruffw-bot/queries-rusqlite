@@ -1,9 +1,20 @@
 //! Lazy execution and iteration over prepared queries.
 
 use queries_rusqlite::{Query, queries};
-use rusqlite::{Connection, Error, Result};
+use rusqlite::types::ToSqlOutput;
+use rusqlite::{Connection, Error, Result, ToSql};
 
 type NumberQuery<'conn> = Query<'conn, (i64,)>;
+
+struct Unbindable;
+
+impl ToSql for Unbindable {
+    fn to_sql(&self) -> Result<ToSqlOutput<'_>> {
+        Err(Error::ToSqlConversionFailure(Box::new(
+            std::io::Error::other("parameter conversion failed"),
+        )))
+    }
+}
 
 #[queries]
 trait Streams {
@@ -30,6 +41,12 @@ trait Streams {
 
     #[query = "SELECT ?1"]
     fn binding_error() -> Query<'_, (i64,)>;
+
+    #[query = "SELECT 1"]
+    fn too_many_parameters(unused: i64) -> Query<'_, (i64,)>;
+
+    #[query = "SELECT ?1"]
+    fn conversion_binding_error(value: Unbindable) -> Query<'_, (i64,)>;
 
     #[query = "SELECT missing FROM missing_table"]
     fn invalid_sql() -> Query<'_, (i64,)>;
@@ -118,6 +135,14 @@ fn query_errors_are_reported_at_the_correct_stage() -> Result<()> {
     assert!(matches!(
         q.binding_error(),
         Err(Error::InvalidParameterCount(0, 1))
+    ));
+    assert!(matches!(
+        q.too_many_parameters(1),
+        Err(Error::InvalidParameterCount(1, 0))
+    ));
+    assert!(matches!(
+        q.conversion_binding_error(Unbindable),
+        Err(Error::ToSqlConversionFailure(_))
     ));
     assert!(q.invalid_sql().is_err());
 

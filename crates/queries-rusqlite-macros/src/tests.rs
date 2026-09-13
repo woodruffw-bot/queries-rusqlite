@@ -347,6 +347,7 @@ fn named_from_row_expansion() {
         "r#type : row . get (\"type\") ?",
         "name : row . get (\"different\") ?",
         ":: core :: result :: Result :: Ok",
+        "automatically_derived",
     ] {
         assert!(output.contains(expected), "missing {expected} in {output}");
     }

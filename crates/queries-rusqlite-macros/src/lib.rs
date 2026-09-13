@@ -5,8 +5,19 @@ use proc_macro2::TokenStream as Tokens;
 use quote::quote;
 use syn::{
     Attribute, Data, DeriveInput, Expr, Fields, FnArg, ItemTrait, Meta, Pat, Path, ReturnType,
-    TraitItem, TraitItemFn, Type, parse::Parser, parse_quote, punctuated::Punctuated,
+    TraitItem, TraitItemFn, Type, ext::IdentExt, parse::Parser, parse_quote,
+    punctuated::Punctuated,
 };
+
+const GENERATED_METHODS: &[&str] = &[
+    "from_conn",
+    "from_conn_mut",
+    "from_connection",
+    "from_tx",
+    "begin",
+    "commit",
+    "rollback",
+];
 
 /// Replace a trait with a struct of synchronous query methods.
 ///
@@ -107,7 +118,7 @@ pub fn derive_from_row(input: TokenStream) -> TokenStream {
 }
 
 fn finish(result: syn::Result<Tokens>) -> Tokens {
-    result.unwrap_or_else(|error| error.into_compile_error())
+    result.unwrap_or_else(syn::Error::into_compile_error)
 }
 
 fn crate_path(tokens: Tokens) -> syn::Result<Path> {
@@ -270,19 +281,8 @@ fn expand_method(method: &TraitItemFn, path: &Path) -> syn::Result<Tokens> {
         ));
     }
     let name = &signature.ident;
-    let method_name = name.to_string();
-    if [
-        "from_conn",
-        "from_conn_mut",
-        "from_connection",
-        "from_tx",
-        "begin",
-        "commit",
-        "rollback",
-    ]
-    .iter()
-    .any(|reserved| method_name.trim_start_matches("r#") == *reserved)
-    {
+    let method_name = name.unraw().to_string();
+    if GENERATED_METHODS.contains(&method_name.as_str()) {
         return Err(syn::Error::new_spanned(
             name,
             "this name is reserved for a generated method",
@@ -348,7 +348,7 @@ fn expand_method(method: &TraitItemFn, path: &Path) -> syn::Result<Tokens> {
     Ok(quote! {
         #(#attributes)*
         pub fn #name(&self, #inputs) -> ::rusqlite::Result<#output> {
-            use #path::__private::Probe as _;
+            use #path::__private::SingleRowFallback as _;
             <#output as #path::__private::FromRows<'_, {
                 #path::__private::FromRowsCategory::<#output>::VALUE
             }>>::from_rows(
@@ -435,9 +435,8 @@ fn expand_from_row(input: Tokens) -> syn::Result<Tokens> {
             }
         }
         if let Some(name) = &field.ident {
-            let name_string = name.to_string();
-            let name_string = name_string.trim_start_matches("r#");
-            let column = column.unwrap_or_else(|| quote!(#name_string));
+            let column_name = name.unraw().to_string();
+            let column = column.unwrap_or_else(|| quote!(#column_name));
             initializers.push(quote!(#name: row.get(#column)?));
         } else {
             let column = column.unwrap_or_else(|| quote!(#index));
@@ -451,6 +450,7 @@ fn expand_from_row(input: Tokens) -> syn::Result<Tokens> {
     let name = &item.ident;
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
     Ok(quote! {
+        #[automatically_derived]
         impl #impl_generics #path::FromRow for #name #type_generics #where_clause {
             fn from_row(row: &::rusqlite::Row<'_>) -> ::rusqlite::Result<Self> {
                 ::core::result::Result::Ok(#initializer)
