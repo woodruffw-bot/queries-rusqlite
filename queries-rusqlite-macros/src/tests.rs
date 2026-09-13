@@ -105,6 +105,10 @@ fn query_expansion_preserves_visibility_docs_and_conditions() {
     assert_eq!(output.matches("cfg (feature = \"users\")").count(), 6);
     assert_eq!(output.matches("cfg_attr (feature = \"extra\"").count(), 6);
     assert!(!output.contains("queries_rusqlite"));
+    assert!(output.contains(":: rusqlite :: Connection"));
+    assert!(output.contains(":: rusqlite :: Result"));
+    assert!(output.contains(":: rusqlite :: params !"));
+    assert!(!output.contains("renamed :: rusqlite"));
 }
 
 #[test]
@@ -338,7 +342,7 @@ fn named_from_row_expansion() {
     for expected in [
         "impl < T > renamed :: FromRow for Row < T >",
         "T : Clone",
-        "T : renamed :: rusqlite :: types :: FromSql",
+        "T : :: rusqlite :: types :: FromSql",
         "id : row . get (\"id\") ?",
         "r#type : row . get (\"type\") ?",
         "name : row . get (\"different\") ?",

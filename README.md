@@ -11,14 +11,16 @@ Install from Git:
 ```toml
 [dependencies]
 queries-rusqlite = { git = "https://github.com/woodruffw-bot/queries-rusqlite" }
+rusqlite = { version = "0.40.2", default-features = false }
 ```
 
-The crate re-exports `rusqlite`, with its default features disabled.
+Declare `rusqlite` as a direct dependency under that name; generated code
+references it directly.
 
 ## Queries
 
 ```rust
-use queries_rusqlite::{FromRow, queries, rusqlite};
+use queries_rusqlite::{FromRow, queries};
 
 #[derive(Debug, PartialEq, FromRow)]
 struct User {
@@ -80,13 +82,13 @@ For custom decoding, implement
 `fn from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self>` manually.
 Returned values own their data and cannot borrow from a SQLite row.
 
-If the dependency is renamed, set `#[queries(crate = renamed)]` and
+If `queries-rusqlite` is renamed, set `#[queries(crate = renamed)]` and
 `#[from_row(crate = renamed)]` on the corresponding declarations.
 
 ## Lazy iteration
 
 ```rust
-use queries_rusqlite::{Query, queries, rusqlite};
+use queries_rusqlite::{Query, queries};
 
 #[queries]
 trait Numbers {

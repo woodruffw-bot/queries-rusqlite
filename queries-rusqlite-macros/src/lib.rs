@@ -19,6 +19,7 @@ use syn::{
 /// `from_connection`, or `from_tx`.
 ///
 /// The optional `crate = path` argument selects a renamed `queries-rusqlite` crate.
+/// Callers must also declare a dependency named `rusqlite`.
 /// Every method must declare its SQL:
 ///
 /// ```compile_fail
@@ -46,6 +47,7 @@ pub fn queries(attributes: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// Use `#[column = "name"]` to override a field's column and
 /// `#[from_row(crate = path)]` to select a renamed `queries-rusqlite` crate.
+/// Callers must also declare a dependency named `rusqlite`.
 /// Unit structs, enums, and unions are not supported:
 ///
 /// ```compile_fail
@@ -130,53 +132,53 @@ fn expand_queries(attributes: Tokens, input: Tokens) -> syn::Result<Tokens> {
         }
 
         #(#conditions)*
-        impl<'conn> #name<&'conn #path::rusqlite::Connection> {
+        impl<'conn> #name<&'conn ::rusqlite::Connection> {
             /// Borrow a connection for queries.
-            pub fn from_conn(connection: &'conn #path::rusqlite::Connection) -> Self {
+            pub fn from_conn(connection: &'conn ::rusqlite::Connection) -> Self {
                 Self { connection }
             }
         }
 
         #(#conditions)*
-        impl<'conn> #name<&'conn mut #path::rusqlite::Connection> {
+        impl<'conn> #name<&'conn mut ::rusqlite::Connection> {
             /// Borrow a connection for queries and transactions.
-            pub fn from_conn_mut(connection: &'conn mut #path::rusqlite::Connection) -> Self {
+            pub fn from_conn_mut(connection: &'conn mut ::rusqlite::Connection) -> Self {
                 Self { connection }
             }
 
             /// Begin a transaction on the borrowed connection.
-            pub fn begin(&mut self) -> #path::rusqlite::Result<#name<#path::rusqlite::Transaction<'_>>> {
+            pub fn begin(&mut self) -> ::rusqlite::Result<#name<::rusqlite::Transaction<'_>>> {
                 self.connection.transaction().map(#name::from_tx)
             }
         }
 
         #(#conditions)*
-        impl #name<#path::rusqlite::Connection> {
+        impl #name<::rusqlite::Connection> {
             /// Take ownership of a connection.
-            pub fn from_connection(connection: #path::rusqlite::Connection) -> Self {
+            pub fn from_connection(connection: ::rusqlite::Connection) -> Self {
                 Self { connection }
             }
 
             /// Begin a transaction on the owned connection.
-            pub fn begin(&mut self) -> #path::rusqlite::Result<#name<#path::rusqlite::Transaction<'_>>> {
+            pub fn begin(&mut self) -> ::rusqlite::Result<#name<::rusqlite::Transaction<'_>>> {
                 self.connection.transaction().map(#name::from_tx)
             }
         }
 
         #(#conditions)*
-        impl<'conn> #name<#path::rusqlite::Transaction<'conn>> {
+        impl<'conn> #name<::rusqlite::Transaction<'conn>> {
             /// Take ownership of a transaction.
-            pub fn from_tx(connection: #path::rusqlite::Transaction<'conn>) -> Self {
+            pub fn from_tx(connection: ::rusqlite::Transaction<'conn>) -> Self {
                 Self { connection }
             }
 
             /// Commit the transaction.
-            pub fn commit(self) -> #path::rusqlite::Result<()> {
+            pub fn commit(self) -> ::rusqlite::Result<()> {
                 self.connection.commit()
             }
 
             /// Roll back the transaction.
-            pub fn rollback(self) -> #path::rusqlite::Result<()> {
+            pub fn rollback(self) -> ::rusqlite::Result<()> {
                 self.connection.rollback()
             }
         }
@@ -292,14 +294,14 @@ fn expand_method(method: &TraitItemFn, path: &Path) -> syn::Result<Tokens> {
     let inputs = &signature.inputs;
     Ok(quote! {
         #(#attributes)*
-        pub fn #name(&self, #inputs) -> #path::rusqlite::Result<#output> {
+        pub fn #name(&self, #inputs) -> ::rusqlite::Result<#output> {
             use #path::__private::Probe as _;
             <#output as #path::__private::FromRows<'_, {
                 #path::__private::FromRowsCategory::<#output>::VALUE
             }>>::from_rows(
                 #path::__private::ConnectionSource::connection(&self.connection),
                 #sql,
-                #path::rusqlite::params![#(#arguments),*],
+                ::rusqlite::params![#(#arguments),*],
             )
         }
     })
@@ -342,7 +344,7 @@ fn expand_from_row(input: Tokens) -> syn::Result<Tokens> {
         generics
             .make_where_clause()
             .predicates
-            .push(parse_quote!(#ty: #path::rusqlite::types::FromSql));
+            .push(parse_quote!(#ty: ::rusqlite::types::FromSql));
         let mut column = None;
         for attribute in &field.attrs {
             if attribute.path().is_ident("from_row") {
@@ -397,7 +399,7 @@ fn expand_from_row(input: Tokens) -> syn::Result<Tokens> {
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
     Ok(quote! {
         impl #impl_generics #path::FromRow for #name #type_generics #where_clause {
-            fn from_row(row: &#path::rusqlite::Row<'_>) -> #path::rusqlite::Result<Self> {
+            fn from_row(row: &::rusqlite::Row<'_>) -> ::rusqlite::Result<Self> {
                 ::core::result::Result::Ok(#initializer)
             }
         }

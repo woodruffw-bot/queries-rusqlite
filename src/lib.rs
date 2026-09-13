@@ -1,7 +1,10 @@
 //! Declare SQLite queries as synchronous Rust methods.
 //!
+//! Add both `queries-rusqlite` and `rusqlite` to your dependencies. Generated
+//! code references `rusqlite` directly, so keep that dependency name.
+//!
 //! ```
-//! use queries_rusqlite::{queries, FromRow, rusqlite};
+//! use queries_rusqlite::{queries, FromRow};
 //!
 //! #[derive(Debug, PartialEq, FromRow)]
 //! struct User {
@@ -43,8 +46,6 @@
 use std::marker::PhantomData;
 
 pub use queries_rusqlite_macros::{FromRow, queries};
-/// The rusqlite version used by this crate.
-pub use rusqlite;
 
 /// Decode an owned value from a SQLite row.
 ///
@@ -95,7 +96,7 @@ tuple_from_row!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:
 /// values. Execution and decoding errors appear as iterator items.
 ///
 /// ```
-/// use queries_rusqlite::{queries, Query, rusqlite};
+/// use queries_rusqlite::{queries, Query};
 /// #[queries]
 /// trait Numbers {
 ///     #[query = "SELECT ?1 UNION ALL SELECT ?1 + 1"]
@@ -120,7 +121,7 @@ tuple_from_row!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:
 /// A query cannot outlive the wrapper it borrows:
 ///
 /// ```compile_fail
-/// use queries_rusqlite::{queries, Query, rusqlite};
+/// use queries_rusqlite::{queries, Query};
 /// #[queries]
 /// trait Numbers {
 ///     #[query = "SELECT 1"]
@@ -137,7 +138,7 @@ tuple_from_row!(A:0, B:1, C:2, D:3, E:4, F:5, G:6, H:7, I:8, J:9, K:10, L:11, M:
 /// A live query also prevents committing its transaction:
 ///
 /// ```compile_fail
-/// use queries_rusqlite::{queries, Query, rusqlite};
+/// use queries_rusqlite::{queries, Query};
 /// #[queries]
 /// trait Numbers {
 ///     #[query = "SELECT 1"]
@@ -164,7 +165,7 @@ impl<T: FromRow> Query<'_, T> {
 /// Implementation details used by the procedural macro.
 #[doc(hidden)]
 pub mod __private {
-    use super::{FromRow, PhantomData, Query, rusqlite};
+    use super::{FromRow, PhantomData, Query};
     use rusqlite::{Connection, OptionalExtension, ToSql, Transaction};
 
     pub trait ConnectionSource {
