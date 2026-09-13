@@ -180,6 +180,14 @@ report excludes test files, never production code. Coverage measures execution;
 it does not prove the absence of bugs. Documentation examples are tested
 separately.
 
+CI also audits the workflows with zizmor 1.30.1 in pedantic mode and fails on
+findings. To audit locally with zizmor installed, run the command below. Set
+`GH_TOKEN` to include online audits.
+
+```sh
+zizmor --persona=pedantic .
+```
+
 ## License
 
 BSD-3-Clause. The return type dispatch is adapted from

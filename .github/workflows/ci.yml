@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     name: Rust ${{ matrix.rust }}
@@ -32,6 +36,7 @@ jobs:
       - run: cargo doc --workspace --no-deps --locked
 
   coverage:
+    name: Coverage
     runs-on: ubuntu-latest
     env:
       RUSTUP_TOOLCHAIN: "1.95.0"
