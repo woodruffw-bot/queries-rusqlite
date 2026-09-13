@@ -3,8 +3,8 @@
 [`queries`](https://docs.rs/queries/0.2.0/queries/)-style query declarations for
 [`rusqlite`](https://docs.rs/rusqlite/), with synchronous methods.
 
-Requires Rust 1.95.0 or later and a system SQLite library. On Debian or Ubuntu,
-install `libsqlite3-dev` and `pkg-config`.
+Requires Rust 1.95.0 or later. Use a system SQLite installation or enable
+rusqlite's `bundled` feature to build SQLite from source.
 
 Install from Git:
 
