@@ -9,8 +9,8 @@ license = "BSD-3-Clause"
 readme = "../../README.md"
 
 [dependencies]
-queries-rusqlite-macros = { version = "=0.1.0", path = "../queries-rusqlite-macros" }
-rusqlite = { version = "0.40.2", default-features = false }
+queries-rusqlite-macros.workspace = true
+rusqlite.workspace = true
 
 [lints]
 workspace = true
