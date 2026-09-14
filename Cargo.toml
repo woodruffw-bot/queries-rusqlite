@@ -10,5 +10,22 @@ rusqlite = { version = "0.40.2", default-features = false }
 syn = { version = "2", default-features = false, features = ["full", "parsing", "printing", "proc-macro", "clone-impls", "derive"] }
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+elided_lifetimes_in_paths = "deny"
+explicit_outlives_requirements = "deny"
+let_underscore_drop = "deny"
 missing_docs = "deny"
+unreachable_pub = "deny"
+unsafe_code = "forbid"
+unused_lifetimes = "deny"
+unused_qualifications = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+dbg_macro = "deny"
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
+must_use_candidate = "deny"
+needless_collect = "deny"
+redundant_clone = "deny"
+todo = "deny"
+unimplemented = "deny"

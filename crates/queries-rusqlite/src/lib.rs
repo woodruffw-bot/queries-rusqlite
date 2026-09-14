@@ -55,7 +55,11 @@ pub use queries_rusqlite_macros::{FromRow, queries};
 /// Returned values cannot borrow from the row: rusqlite reuses its storage when
 /// it advances to the next row.
 pub trait FromRow: Sized {
-    /// Decode a row, preserving any column lookup or conversion error.
+    /// Decode a row.
+    ///
+    /// # Errors
+    ///
+    /// Returns column lookup and conversion errors from rusqlite.
     fn from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self>;
 }
 

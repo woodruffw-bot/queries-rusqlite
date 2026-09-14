@@ -337,7 +337,7 @@ fn named_from_row_expansion() {
         }
     })
     .unwrap();
-    let _: syn::ItemImpl = syn::parse2(output.clone()).unwrap();
+    let _parsed: syn::ItemImpl = syn::parse2(output.clone()).unwrap();
     let output = output.to_string();
     for expected in [
         "impl < T > renamed :: FromRow for Row < T >",
@@ -370,7 +370,7 @@ fn tuple_and_empty_from_row_expansion() {
             struct Empty();
         ),
     ] {
-        let _: syn::ItemImpl = syn::parse2(expand_from_row(input).unwrap()).unwrap();
+        let _parsed: syn::ItemImpl = syn::parse2(expand_from_row(input).unwrap()).unwrap();
     }
 }
 
